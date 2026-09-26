@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0910">
+<title>塔罗 · Tarot</title>
+<style>
+:root{--bg:#0a0910;--gold:#c9a961;--gold-dim:#7d6a3c;--ink:#ece6d9;--card-w:78px;--card-h:130px;--r:6px;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;margin:0;overflow:hidden;}
+body{background:radial-gradient(120% 70% at 50% -10%,#1e1a32 0,transparent 55%),radial-gradient(100% 60% at 50% 110%,#1a1626 0,transparent 55%),var(--bg);color:var(--ink);font-family:"Songti SC","Noto Serif SC","Source Han Serif SC",Georgia,serif;user-select:none;-webkit-user-select:none;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(circle at 50% 28%,rgba(201,169,97,.07),transparent 55%);animation:breathe 9s ease-in-out infinite;}
+@keyframes breathe{0%,100%{opacity:.55}50%{opacity:1}}
+#app{position:fixed;inset:0;z-index:1;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);}
+.topbar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 20px 4px;}
+.title{font-size:12px;letter-spacing:.55em;color:var(--gold-dim);text-indent:.55em;font-weight:500;}
+.btn{background:none;border:1px solid rgba(201,169,97,.26);color:var(--gold);font-family:inherit;font-size:12px;padding:6px 14px;border-radius:999px;letter-spacing:.12em;cursor:pointer;transition:.22s;text-indent:.12em;}
+.btn:active{background:rgba(201,169,97,.14);border-color:rgba(201,169,97,.5);}
+.reading{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:flex-start;gap:16px;overflow-x:auto;overflow-y:hidden;padding:10px 24px;scrollbar-width:none;position:relative;-webkit-overflow-scrolling:touch;cursor:grab;}
+.reading.dragging{cursor:grabbing;}
+.reading::-webkit-scrollbar{display:none;}
+.reading .slot:first-child{margin-left:auto;}
+.reading .slot:last-child{margin-right:auto;}
+.empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:13px;letter-spacing:.3em;color:rgba(201,169,97,.32);text-indent:.3em;white-space:nowrap;transition:opacity .5s;pointer-events:none;}
+.empty.hide{opacity:0;}
+.slot{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:9px;animation:slotIn .5s cubic-bezier(.2,.9,.3,1) both;}
+@keyframes slotIn{from{opacity:0}to{opacity:1}}
+.holder{width:106px;height:177px;flex:0 0 auto;}
+.slot .tag{font-size:11px;letter-spacing:.12em;color:var(--gold-dim);text-indent:.12em;white-space:nowrap;text-align:center;}
+.slot .tag .nm{color:var(--ink);}
+.slot .tag .pos{color:var(--gold-dim);}
+.slot .tag .pos.rev{color:#a8734a;}
+.table{flex:0 0 auto;position:relative;width:100%;}
+.fan{display:flex;align-items:center;overflow-x:auto;overflow-y:hidden;padding:22px 28px 30px;scrollbar-width:none;-webkit-overflow-scrolling:touch;cursor:grab;}
+.fan.dragging{cursor:grabbing;}
+.fan::-webkit-scrollbar{display:none;}
+.fan .card{flex:0 0 auto;width:var(--card-w);height:var(--card-h);margin-right:calc(var(--card-w) * -0.6);font-size:calc(var(--card-w) / 9);transform:rotate(var(--tilt,0deg));transition:opacity .32s ease;cursor:pointer;}
+.fan .card:last-child{margin-right:0;}
+.fan .card.taken{opacity:0;pointer-events:none;}
+.fan .card.enter{animation:fanIn .55s cubic-bezier(.2,.85,.3,1) both;}
+@keyframes fanIn{from{opacity:0;transform:rotate(var(--tilt,0deg)) translateY(46px) scale(.72);}to{opacity:1;transform:rotate(var(--tilt,0deg)) translateY(0) scale(1);}}
+.fan.dragging .card{cursor:grabbing;}
+.hint{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);font-size:11px;letter-spacing:.28em;color:rgba(201,169,97,.4);text-indent:.28em;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .6s;}
+.hint.show{opacity:1;}
+.card{position:relative;perspective:1100px;}
+.card .ci{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .72s cubic-bezier(.4,.15,.2,1);}
+.card.revealed .ci{transform:rotateY(180deg);}
+.card .f{position:absolute;inset:0;border-radius:var(--r);backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;}
+.f-back{position:absolute;inset:0;border-radius:var(--r);overflow:hidden;background-color:#1a1428;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M14 1l13 13-13 13L1 14z' fill='none' stroke='%23c9a961' stroke-width='0.7' opacity='0.35'/%3E%3Ccircle cx='14' cy='14' r='2.4' fill='%23c9a961' opacity='0.22'/%3E%3C/svg%3E"),radial-gradient(circle at 50% 50%,#2b2244 0%,#191328 58%,#0e0a17 100%);border:1px solid rgba(168,137,74,.72);box-shadow:inset 0 0 0 2.5px #0e0a17,inset 0 0 0 4px rgba(168,137,74,.4),inset 0 0 18px rgba(0,0,0,.75),0 4px 12px rgba(0,0,0,.6);}
+.f-back::before{content:'';position:absolute;left:50%;top:50%;width:46%;height:46%;transform:translate(-50%,-50%) rotate(45deg);border:1px solid rgba(201,169,97,.5);box-shadow:inset 0 0 0 1px rgba(14,10,23,.85),0 0 14px rgba(201,169,97,.16);}
+.f-back::after{content:'';position:absolute;left:50%;top:50%;width:20%;height:20%;transform:translate(-50%,-50%) rotate(45deg);background:rgba(201,169,97,.16);border:1px solid rgba(201,169,97,.55);}
+.f-front{transform:rotateY(180deg);background:#f6f1e4;border:1px solid #8a7648;box-shadow:inset 0 0 0 2px #fdfbf4,inset 0 0 0 3.5px rgba(168,140,80,.45),inset 0 0 22px rgba(148,122,76,.14);}
+.fwrap{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;transition:transform .5s cubic-bezier(.4,.15,.2,1);}
+.card.reversed .fwrap{transform:rotate(180deg);}
+.face-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;border-radius:5px;opacity:0;transition:opacity .28s ease;}
+.face-img.loaded{opacity:1;}
+.fi{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:9% 7% 7%;color:#1c1712;overflow:hidden;text-align:center;}
+.fi::before{content:'';position:absolute;inset:3.5%;border:0.6px solid rgba(150,124,72,.4);pointer-events:none;}
+.fi .fk-num{font-family:Georgia,serif;font-size:1.4em;color:#8a6f30;font-weight:600;letter-spacing:.1em;position:relative;z-index:1;}
+.fi .fk-sym{font-family:Georgia,serif;font-size:2em;color:#8a6f30;line-height:1;position:relative;z-index:1;}
+.fi .fk-nm{font-size:.78em;line-height:1.3;letter-spacing:.08em;color:#2e2347;margin-top:.4em;position:relative;z-index:1;font-weight:500;}
+.flyer{position:fixed;z-index:900;pointer-events:none;font-size:calc(106px / 9);}
+.shuffle-layer{position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,rgba(22,18,34,.72),rgba(10,9,16,.94));transition:opacity .5s ease;}
+.shuffle-layer.out{opacity:0;pointer-events:none;}
+.shuffle-deck{position:relative;width:var(--card-w);height:var(--card-h);}
+.shuffle-deck .sc{position:absolute;inset:0;border-radius:var(--r);background-color:#1a1428;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M14 1l13 13-13 13L1 14z' fill='none' stroke='%23c9a961' stroke-width='0.7' opacity='0.35'/%3E%3Ccircle cx='14' cy='14' r='2.4' fill='%23c9a961' opacity='0.22'/%3E%3C/svg%3E"),radial-gradient(circle at 50% 50%,#2b2244 0%,#191328 58%,#0e0a17 100%);border:1px solid rgba(168,137,74,.72);box-shadow:inset 0 0 0 2.5px #0e0a17,inset 0 0 0 4px rgba(168,137,74,.4),inset 0 0 18px rgba(0,0,0,.75),0 4px 12px rgba(0,0,0,.6);will-change:transform;}
+.shuffle-deck .sc::after{content:'';position:absolute;left:50%;top:50%;width:46%;height:46%;transform:translate(-50%,-50%) rotate(45deg);border:1px solid rgba(201,169,97,.5);}
+.status-bar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);font-size:10.5px;letter-spacing:.16em;color:rgba(201,169,97,.65);text-indent:.16em;pointer-events:none;z-index:850;opacity:0;transition:opacity .5s;text-align:center;white-space:nowrap;padding:6px 14px;background:rgba(10,9,16,.8);border-radius:999px;border:1px solid rgba(201,169,97,.2);}
+.status-bar.show{opacity:1;}
+@media (max-width:380px){:root{--card-w:70px;--card-h:117px;}.holder{width:96px;height:160px;}.flyer{font-size:calc(96px / 9);}}
+@media (max-height:640px){.fan{padding:16px 24px 24px;}.holder{width:94px;height:157px;}.flyer{font-size:calc(94px / 9);}}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="topbar">
+    <div class="title">TAROT</div>
+    <button class="btn" id="resetBtn">重新洗牌</button>
+  </div>
+  <div class="reading" id="reading">
+    <div class="empty" id="emptyHint">轻触下方任意一张牌</div>
+  </div>
+  <div class="table">
+    <div class="fan" id="fan"></div>
+    <div class="hint" id="hint">滑动浏览 · 点击抽牌</div>
+  </div>
+</div>
+
+<div class="shuffle-layer" id="shuffleLayer">
+  <div class="shuffle-deck" id="shuffleDeck"></div>
+</div>
+
+<div class="status-bar" id="statusBar"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   图片文件夹：和 HTML 同级的 cards/
+   ============================================================ */
+const IMG_BASE = 'cards/';
+
+/* ============================================================
+   大阿卡纳文件名（照你截图）
+   ============================================================ */
+const MAJOR_FILES = [
+  '00-the-fool.webp',
+  '01-the-magician.webp',
+  '02-the-high-priestess.webp',
+  '03-the-empress.webp',
+  '04-the-emperor.webp',
+  '05-the-hierophant.webp',
+  '06-the-lovers.webp',
+  '07-the-chariot.webp',
+  '08-strength.webp',
+  '09-the-hermit.webp',
+  '10-wheel-of-fortune.webp',
+  '11-justice.webp',
+  '12-the-hanged-man.webp',
+  '13-death.webp',
+  '14-temperance.webp',
+  '15-the-devil.webp',
+  '16-the-tower.webp',
+  '17-the-star.webp',
+  '18-the-moon.webp',
+  '19-the-sun.webp',
+  '20-judgement.webp',
+  '21-the-world.webp',
+];
+
+/* ============================================================
+   小阿卡纳命名：`花色-点数.webp`
+   点数英文单词
+   ============================================================ */
+const MINOR_RANK_EN = [
+  'ace','two','three','four','five','six','seven','eight','nine','ten',
+  'page','knight','queen','king'
+];
+const MINOR_SUIT_EN = ['wands','cups','swords','pentacles'];
+
+/* 生成小阿卡纳图片完整路径 */
+function minorURL(suit, rankN){
+  return IMG_BASE + suit + '-' + MINOR_RANK_EN[rankN - 1] + '.webp';
+}
+
+/* ============================================================
+   工具
+   ============================================================ */
+const wait = ms => new Promise(r => setTimeout(r, ms));
+function randInt(n){if(window.crypto&&crypto.getRandomValues){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n;}return Math.floor(Math.random()*n);}
+function randBit(){if(window.crypto&&crypto.getRandomValues){const a=new Uint8Array(1);crypto.getRandomValues(a);return a[0]<128;}return Math.random()<0.5;}
+function canLoad(url, timeout){
+  return new Promise(resolve => {
+    const img = new Image();
+    let done = false;
+    const finish = v => { if (done) return; done = true; resolve(v); };
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false);
+    setTimeout(() => finish(false), timeout || 2500);
+    img.src = url;
+  });
+}
+
+/* ============================================================
+   音效
+   ============================================================ */
+let ac=null;
+function audio(){if(!ac){const AC=window.AudioContext||window.webkitAudioContext;if(AC){try{ac=new AC();}catch(e){ac=null;}}}if(ac&&ac.state==='suspended')ac.resume();return ac;}
+document.addEventListener('touchstart',()=>audio(),{once:true,passive:true});
+document.addEventListener('mousedown',()=>audio(),{once:true});
+function noise(dur,freq,q,vol,decay){const c=audio();if(!c)return;const sr=c.sampleRate;const len=Math.max(1,Math.floor(sr*dur));const buf=c.createBuffer(1,len,sr);const d=buf.getChannelData(0);for(let i=0;i<len;i++){d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}const src=c.createBufferSource();src.buffer=buf;const bp=c.createBiquadFilter();bp.type='bandpass';bp.frequency.value=freq;bp.Q.value=q;const g=c.createGain();g.gain.value=vol;src.connect(bp);bp.connect(g);g.connect(c.destination);src.start();}
+function sfxShuffle(){for(let i=0;i<18;i++){setTimeout(()=>{noise(0.03+Math.random()*0.035,1400+Math.random()*2800,0.8,0.045+Math.random()*0.04,1.7);},i*78+Math.random()*45);}}
+function sfxSlide(){noise(0.19,820,0.6,0.05,1.3);}
+function sfxFlip(){noise(0.07,2700,0.9,0.085,2.6);setTimeout(()=>noise(0.055,620,0.8,0.05,2.0),32);}
+
+/* ============================================================
+   花色中文（用于标签）
+   ============================================================ */
+const SUIT_CN = { wands:'权杖', cups:'圣杯', swords:'宝剑', pentacles:'星币' };
+const SUIT_SYM = { wands:'✦', cups:'☽', swords:'†', pentacles:'✧' };
+const RANK_CN = ['王牌','二','三','四','五','六','七','八','九','十','侍从','骑士','王后','国王'];
+const MAJOR_NUM = ['0','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI'];
+const MAJOR_CN = ['愚者','魔术师','女祭司','皇后','皇帝','教皇','恋人','战车','力量','隐士','命运之轮','正义','倒吊人','死神','节制','恶魔','塔','星星','月亮','太阳','审判','世界'];
+
+/* ============================================================
+   建牌
+   ============================================================ */
+function makeDeck(){
+  const d = [];
+
+  /* 大阿卡纳 22 张 */
+  MAJOR_FILES.forEach((f, i) => {
+    d.push({
+      id: 'M' + i,
+      type: 'major',
+      numeral: MAJOR_NUM[i],
+      name: MAJOR_CN[i],
+      url: IMG_BASE + f,
+      reversed: randBit(),
+    });
+  });
+
+  /* 小阿卡纳 56 张 */
+  MINOR_SUIT_EN.forEach(suit => {
+    for (let n = 1; n <= 14; n++){
+      d.push({
+        id: suit + '_' + n,
+        type: 'minor',
+        suitKey: suit,
+        suitCn: SUIT_CN[suit],
+        rankN: n,
+        rankCn: RANK_CN[n - 1],
+        url: minorURL(suit, n),
+        reversed: randBit(),
+      });
+    }
+  });
+
+  return d;
+}
+
+function shuffle(arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=randInt(i+1);const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+/* ============================================================
+   牌面渲染
+   ============================================================ */
+function fallbackHTML(card){
+  if (card.type === 'major'){
+    return `<div class="fi"><div class="fk-num">${card.numeral}</div><div class="fk-nm">${card.name}</div></div>`;
+  }
+  return `<div class="fi"><div class="fk-sym">${SUIT_SYM[card.suitKey]}</div><div class="fk-nm">${card.suitCn}${card.rankCn}</div></div>`;
+}
+
+function faceHTML(card){
+  return `${fallbackHTML(card)}<img class="face-img" src="${card.url}" alt="" draggable="false" onload="this.classList.add('loaded')" onerror="this.remove()">`;
+}
+
+function cardInner(card){
+  return `<div class="ci"><div class="f f-back"></div><div class="f f-front"><div class="fwrap">${faceHTML(card)}</div></div></div>`;
+}
+function cardBackOnly(){return `<div class="f f-back"></div>`;}
+
+/* ============================================================
+   DOM
+   ============================================================ */
+const reading=document.getElementById('reading');
+const emptyHint=document.getElementById('emptyHint');
+const fan=document.getElementById('fan');
+const hint=document.getElementById('hint');
+const resetBtn=document.getElementById('resetBtn');
+const shuffleLayer=document.getElementById('shuffleLayer');
+const shuffleDeck=document.getElementById('shuffleDeck');
+const statusBar=document.getElementById('statusBar');
+
+/* ============================================================
+   状态
+   ============================================================ */
+let deck = [];
+let queue = Promise.resolve();
+let busy = false;
+
+/* ============================================================
+   拖拽滚动
+   ============================================================ */
+function makeDraggableScroll(el){
+  const st={mouseDown:false,mouseStartX:0,mouseStartScroll:0,mouseMoved:false,touchMoved:false,touchStartX:0,touchStartY:0};
+  el.addEventListener('mousedown',e=>{if(e.button!==0)return;st.mouseDown=true;st.mouseMoved=false;st.mouseStartX=e.clientX;st.mouseStartScroll=el.scrollLeft;el.classList.add('dragging');e.preventDefault();});
+  window.addEventListener('mousemove',e=>{if(!st.mouseDown)return;const dx=e.clientX-st.mouseStartX;if(Math.abs(dx)>3)st.mouseMoved=true;el.scrollLeft=st.mouseStartScroll-dx;});
+  window.addEventListener('mouseup',()=>{if(!st.mouseDown)return;st.mouseDown=false;el.classList.remove('dragging');setTimeout(()=>{st.mouseMoved=false;},60);});
+  el.addEventListener('touchstart',e=>{if(!e.touches[0])return;st.touchStartX=e.touches[0].clientX;st.touchStartY=e.touches[0].clientY;st.touchMoved=false;},{passive:true});
+  el.addEventListener('touchmove',e=>{if(!e.touches[0])return;const dx=Math.abs(e.touches[0].clientX-st.touchStartX);const dy=Math.abs(e.touches[0].clientY-st.touchStartY);if(dx>6||dy>6)st.touchMoved=true;},{passive:true});
+  el.addEventListener('touchend',()=>{setTimeout(()=>{st.touchMoved=false;},60);},{passive:true});
+  el.addEventListener('touchcancel',()=>{setTimeout(()=>{st.touchMoved=false;},60);},{passive:true});
+  return {moved:()=>st.mouseMoved||st.touchMoved};
+}
+let fanDragGuard=null;
+let readingDragGuard=null;
+
+/* ============================================================
+   洗牌动画
+   ============================================================ */
+function buildShuffleDeck(){shuffleDeck.innerHTML='';for(let i=0;i<14;i++){const d=document.createElement('div');d.className='sc';d.style.transform=`translate(${(i%3)*1.1}px, ${-i*0.7}px)`;shuffleDeck.appendChild(d);}}
+function shuffleAnim(){
+  const els=[...shuffleDeck.children];
+  const anims=els.map((el,i)=>{
+    const dir=(i%2===0)?-1:1;const mag=52+(i%4)*11;
+    return el.animate([
+      {transform:'translate(0,0) rotate(0deg)'},
+      {transform:`translate(${dir*mag}px, ${-8+(i%3)*5}px) rotate(${dir*9}deg)`,offset:.24},
+      {transform:`translate(${-dir*mag*.55}px, ${5+(i%2)*4}px) rotate(${-dir*6}deg)`,offset:.5},
+      {transform:`translate(${dir*mag*.7}px, -5px) rotate(${dir*7}deg)`,offset:.74},
+      {transform:'translate(0,0) rotate(0deg)'},
+    ],{duration:1450,delay:i*46,easing:'cubic-bezier(.45,0,.35,1)',iterations:2});
+  });
+  return Promise.all(anims.map(a=>a.finished.catch(()=>{})));
+}
+
+/* ============================================================
+   牌带
+   ============================================================ */
+function renderFan(){
+  fan.innerHTML='';
+  deck.forEach((card,i)=>{
+    const el=document.createElement('div');
+    el.className='card back-only enter';
+    el.dataset.id=card.id;
+    el.style.setProperty('--tilt',((Math.random()*2-1)*1.6).toFixed(2)+'deg');
+    el.style.animationDelay=(i*7)+'ms';
+    el.innerHTML=cardBackOnly();
+    el.addEventListener('click',e=>{
+      if(fanDragGuard&&fanDragGuard.moved()){e.preventDefault();e.stopPropagation();return;}
+      pick(el,card);
+    });
+    fan.appendChild(el);
+  });
+}
+
+/* ============================================================
+   抽牌
+   ============================================================ */
+const picked=new Set();
+function pick(el,card){
+  if(busy||picked.has(card.id))return;
+  picked.add(card.id);
+  el.classList.add('taken');
+  if(emptyHint)emptyHint.classList.add('hide');
+  hint.classList.remove('show');
+  queue=queue.then(()=>fly(el,card));
+}
+
+async function fly(srcEl,card){
+  busy=true;sfxSlide();
+  const srcRect=srcEl.getBoundingClientRect();
+  const name=(card.type==='major')?card.name:(card.suitCn+card.rankCn);
+  const posText=card.reversed?'逆位':'正位';
+
+  const slot=document.createElement('div');
+  slot.className='slot';
+  slot.innerHTML=`<div class="holder"></div><div class="tag"><span class="nm">${name}</span> · <span class="pos${card.reversed?' rev':''}">${posText}</span></div>`;
+  reading.appendChild(slot);
+  reading.scrollLeft=reading.scrollWidth;
+  await wait(16);
+
+  const holder=slot.querySelector('.holder');
+  const dstRect=holder.getBoundingClientRect();
+
+  const flyer=document.createElement('div');
+  flyer.className='card flyer';
+  flyer.innerHTML=cardInner(card);
+  flyer.style.left=srcRect.left+'px';
+  flyer.style.top=srcRect.top+'px';
+  flyer.style.width=srcRect.width+'px';
+  flyer.style.height=srcRect.height+'px';
+  flyer.style.transformOrigin='top left';
+  flyer.style.transition='transform .62s cubic-bezier(.22,.78,.28,1)';
+  document.body.appendChild(flyer);
+
+  void flyer.offsetWidth;
+  const dx=dstRect.left-srcRect.left;
+  const dy=dstRect.top-srcRect.top;
+  const sx=dstRect.width/srcRect.width;
+  const sy=dstRect.height/srcRect.height;
+  flyer.style.transform=`translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+
+  await wait(650);
+
+  flyer.style.transition='none';
+  flyer.style.left=dstRect.left+'px';
+  flyer.style.top=dstRect.top+'px';
+  flyer.style.width=dstRect.width+'px';
+  flyer.style.height=dstRect.height+'px';
+  flyer.style.transform='none';
+  void flyer.offsetWidth;
+
+  if(card.reversed)flyer.classList.add('reversed');
+  flyer.classList.add('revealed');
+  sfxFlip();
+  await wait(740);
+
+  const real=document.createElement('div');
+  real.className='card';
+  real.style.position='absolute';
+  real.style.inset='0';
+  real.innerHTML=cardInner(card);
+  holder.style.position='relative';
+  holder.appendChild(real);
+  if(card.reversed)real.classList.add('reversed');
+  void real.offsetWidth;
+  real.classList.add('revealed');
+
+  flyer.remove();
+  busy=false;
+}
+
+/* ============================================================
+   启动
+   ============================================================ */
+async function boot(){
+  shuffleLayer.classList.remove('out');
+  buildShuffleDeck();
+  sfxShuffle();
+  await wait(120);
+  await shuffleAnim();
+  await wait(180);
+  shuffleLayer.classList.add('out');
+
+  deck=shuffle(makeDeck());
+  picked.clear();
+  reading.innerHTML='';
+  reading.appendChild(emptyHint);
+  emptyHint.classList.remove('hide');
+  renderFan();
+
+  await wait(900);
+  hint.classList.add('show');
+}
+
+/* ============================================================
+   检测图片
+   ============================================================ */
+async function detect(){
+  statusBar.classList.add('show');
+  statusBar.textContent = '正在检测图片…';
+
+  const majorOK = await canLoad(IMG_BASE + MAJOR_FILES[0]);
+  const minorOK = await canLoad(minorURL('wands', 1));
+
+  if (majorOK && minorOK){
+    statusBar.textContent = '✓ 已加载 78 张牌图';
+  } else if (majorOK){
+    statusBar.textContent = '⚠ 大阿卡纳已加载，小阿卡纳缺失';
+  } else if (minorOK){
+    statusBar.textContent = '⚠ 小阿卡纳已加载，大阿卡纳缺失';
+  } else {
+    statusBar.textContent = '⚠ 找不到 cards/ 文件夹，使用文字牌面';
+  }
+  setTimeout(()=>statusBar.classList.remove('show'), 3000);
+
+  await boot();
+}
+
+resetBtn.addEventListener('click',()=>{if(busy)return;boot();});
+fanDragGuard=makeDraggableScroll(fan);
+readingDragGuard=makeDraggableScroll(reading);
+
+detect();
+</script>
+</body>
+</html>
